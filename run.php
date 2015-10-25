@@ -23,7 +23,7 @@ foreach($accs as $acc){
 	}
 
 	$command .= "echo \"\n".$acc[1]."\";\n";
-	$command .= "casperjs --proxy=127.0.0.1:9050 --proxy-type=socks5 twitter_app.js $params;\n\n";
+	$command .= "casperjs --proxy=127.0.0.1:9050 --proxy-type=socks5 run.js $params;\n\n";
 
 	$spins++;
 	if($spins >= 5){
@@ -35,4 +35,4 @@ foreach($accs as $acc){
 	}
 }
 
-file_put_contents('run_app.sh', $command);
+file_put_contents('run.sh', $command);
