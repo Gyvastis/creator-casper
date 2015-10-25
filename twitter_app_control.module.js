@@ -1,36 +1,39 @@
 var require = patchRequire(require);
+var casper = null;
+
+var domainMain = "https://www.twitter.com/";
+var domainApp = "https://apps.twitter.com/";
 
 exports.create = function(casperOptions){
   return new TwitterAppControl(casperOptions);
 };
 
-var TwitterAppControl = function TwitterAppControl(CasperOptions){
-  this.domainMain = "https://www.twitter.com/";
-  this.domainApp = "https://apps.twitter.com/";
-
-  this.casper = require('casper').create(casperOptions).start();
-
+var TwitterAppControl = function TwitterAppControl(casperOptions){
+  casper = require('casper').create(casperOptions).start();
   this.credentials = null;
 };
 
 TwitterAppControl.prototype.login = function login() {
-  this.credentials = {
+  var credentials = {
     'email': casper.cli.get(0),
     'username': casper.cli.get(1),
     'password': casper.cli.get(2),
     'phone': casper.cli.get(3)
-  }
+  };
+  this.credentials = credentials;
 
   //fix me: check if credentials are set
 
-  casper.thenOpen(this.getMainUrl() + 'login', function (credentials) {
-      this.fill('form.signin', {
-          'session[username_or_email]': credentials.username,
-          'session[password]': credentials.password
-      }, true);
-  }, credentials);
+  casper.thenOpen(domainMain + 'login', function () {
+    this.echo('Logging in...');
 
-  casper.then(function(credentials){
+    this.fill('form.signin', {
+        'session[username_or_email]': credentials.username,
+        'session[password]': credentials.password
+    }, true);
+  });
+
+  casper.then(function(){
     if(this.getCurrentUrl().indexOf("login_challenge") > 0){
       var challenge_text = 'Entering {0} challenge...';
       var challenge_response = null;
@@ -51,8 +54,8 @@ TwitterAppControl.prototype.login = function login() {
       });
     }
 
-    this.echo('Logged in ('+username+')...');
-  }, credentials);
+    this.echo('Logged in ('+credentials.username+')...');
+  });
 
   return this;
 };
@@ -224,7 +227,7 @@ TwitterAppControl.prototype.saveNewAppCredentials = function saveNewAppCredentia
 };
 
 TwitterAppControl.prototype.execute = function execute(){
-  this.casper.run();
+  casper.run();
   return this;
 };
 
