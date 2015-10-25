@@ -80,10 +80,10 @@ casper.thenOpen(domain2, function(){
           casper.waitFor(function(){
               return this.getCurrentUrl() == domain2;
           }, function(){
-              this.echo('Deleted successfully!');
+              this.echo('Deleted successfully!\n');
           }, function(){
               this.render('test.png');
-              this.echo('Failed to delete app');
+              this.echo('Failed to delete app\n');
           });
         });
 
