@@ -1,5 +1,6 @@
 var require = patchRequire(require);
 var casper = null;
+var fs = require('fs');
 
 var domainMain = "https://www.twitter.com/";
 var domainApp = "https://apps.twitter.com/";
@@ -61,10 +62,19 @@ TwitterAppControl.prototype.login = function login() {
 };
 
 TwitterAppControl.prototype.createApp = function createApp(){
+  var self = this;
   casper.then(function(){
       var accountName = this.evaluate(function(){
-          return $('.content .account-group').attr('data-screen-name');
+          return $('.picture img').attr('alt');
       });
+
+      var saveableCredentials = {
+        'account_name': accountName,
+        'access_token': null,
+        'access_token_secret': null,
+        'consumer_key': null,
+        'consumer_key_secret': null
+      };
 
       var appName = accountName + Math.floor((Math.random() * 100) + 1).toString() + ' test';
 
@@ -114,25 +124,32 @@ TwitterAppControl.prototype.createApp = function createApp(){
       casper.waitForSelector('.access', function(){
           this.echo('Retrieving application credentials...');
 
-          var access_token = this.evaluate(function(){
+          saveableCredentials.access_token = this.evaluate(function(){
               return $('.access .row span:nth-child(2)').get(0).innerText;
           });
-          this.echo(access_token);
+          this.echo(saveableCredentials.access_token);
 
-          var access_token_secret = this.evaluate(function(){
+          saveableCredentials.access_token_secret = this.evaluate(function(){
               return $('.access .row span:nth-child(2)').get(1).innerText;
           });
-          this.echo(access_token_secret);
+          this.echo(saveableCredentials.access_token_secret);
 
-          var consumer_key = this.evaluate(function(){
+          saveableCredentials.consumer_key = this.evaluate(function(){
               return $('.app-settings .row span:nth-child(2)').get(0).innerText;
           });
-          this.echo(consumer_key);
+          this.echo(saveableCredentials.consumer_key);
 
-          var consumer_key_secret = this.evaluate(function(){
+          saveableCredentials.consumer_key_secret = this.evaluate(function(){
               return $('.app-settings .row span:nth-child(2)').get(1).innerText;
           });
-          this.echo(consumer_key_secret);
+          this.echo(saveableCredentials.consumer_key_secret);
+
+          if(self.saveNewAppCredentials(saveableCredentials)){
+            this.echo('Application tokens saved to file successfully!');
+          }
+          else{
+            this.echo('Failed to save application tokens to file.');
+          }
       }, function(){
         this.echo('Failed to fully prepare new application.');
         this.capture('test.png').exit();
@@ -230,9 +247,34 @@ TwitterAppControl.prototype.updateSettings = function updateSettings(){
   return this;
 };
 
-TwitterAppControl.prototype.saveNewAppCredentials = function saveNewAppCredentials(){
-  // fix me: implement
-  return this;
+TwitterAppControl.prototype.saveNewAppCredentials = function saveNewAppCredentials(saveableCredentials){
+  // if(saveableCredentials.account_name == null ||
+    // saveableCredentials.access_token == null ||
+    // saveableCredentials.access_token_secret == null ||
+    // saveableCredentials.consumer_key == null ||
+    // saveableCredentials.consumer_key_secret == null
+  // ){
+    // return false;
+  // }
+
+  var output_file = fs.workingDirectory + '/output.json';
+  casper.echo('Writing output to file ('+output_file+')...');
+
+  var existing_output = fs.read(output_file);
+  if(existing_output == ''){
+    existing_output = [];
+  }
+  else{
+    existing_output = JSON.parse(existing_output);
+  }
+
+  existing_output.push(saveableCredentials);
+
+  fs.write('output.json', JSON.stringify(existing_output), 'w');
+
+  phantom.exit();
+
+  return true;
 };
 
 TwitterAppControl.prototype.execute = function execute(){
