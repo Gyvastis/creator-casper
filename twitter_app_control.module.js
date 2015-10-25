@@ -39,11 +39,11 @@ TwitterAppControl.prototype.login = function login() {
       var challenge_response = null;
 
       if(this.getCurrentUrl().indexOf("challenge_type=RetypeEmail") > 0){
-          this.echo(challenge_text.format('EMAIL'));
+          this.echo(challenge_text.replace('{0}', 'EMAIL'));
           challenge_response = credentials.email;
       }
       else{
-          this.echo(challenge_text.format('PHONE'));
+          this.echo(challenge_text.replace('{0}', 'PHONE'));
           challenge_response = credentials.phone;
       }
 
