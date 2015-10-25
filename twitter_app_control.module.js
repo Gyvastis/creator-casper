@@ -54,65 +54,65 @@ TwitterAppControl.prototype.login = function login() {
       });
     }
 
-    this.echo('Logged in ('+credentials.username+')...');
+    this.echo('Logged in ('+credentials.username+')!');
   });
 
   return this;
 };
 
-TwitterAppControl.prototype.createApp = function create(){
-  casper.then(function(app_url, main_url){
-      var  = this.evaluate(function(){
+TwitterAppControl.prototype.createApp = function createApp(){
+  casper.then(function(){
+      var accountName = this.evaluate(function(){
           return $('.content .account-group').attr('data-screen-name');
       });
 
-      var app_name =  + Math.floor((Math.random() * 100) + 1).toString() + ' test';
+      var appName = accountName + Math.floor((Math.random() * 100) + 1).toString() + ' test';
 
-      casper.thenOpen(app_url + '/app/new', function(){
+      casper.thenOpen(domainApp + '/app/new', function(){
           casper.waitForSelector('#edit-tos-agreement', function(){
               this.click('#edit-tos-agreement');
 
               this.fill('form#twitter-apps-create-form', {
-                  name: app_name,
+                  name: appName,
                   description: 'Test application',
-                  url: main_url
+                  url: domainMain
               }, true);
 
               this.click('#edit-submit');
           }, function(){
-        	    this.echo('App create form not found');
+        	    this.echo('Application creation form not found.');
+              this.capture('test.png').exit();
         	});
       });
 
+
       casper.waitFor(function(){
-          return this.getTitle().indexOf(app_name) >= 0
+          return this.getTitle().indexOf(appName) >= 0
       }, function(){
           this.echo('App created!');
 
-          casper.thenOpen(app_url, function(){
-              var current_app_url = this.evaluate(function(){
+          casper.thenOpen(domainApp, function(){
+              var currentAppUrl = this.evaluate(function(){
                   return $('.app-details a').attr('href').replace('/show', '/keys');
               });
 
-              casper.thenOpen(app_url + current_app_url, function(){
+              casper.thenOpen(domainApp + currentAppUrl, function(){
                 casper.waitForSelector('#edit-submit-owner-token', function(){
+                    this.echo('Creating tokens...');
                     this.click('#edit-submit-owner-token');
                 }, function(){
-                    this.echo('Token submit button not found');
-
-                    this.exit();
+                    this.echo('Tokens creation failed.');
+                    this.capture('test.png').exit();
                 });
               });
           });
       }, function(){
-          this.echo('Failed to create app');
-          this.capture('test.png');
-
-          this.exit();
+          this.echo('Failed to create application.');
+          this.capture('test.png').exit();
       });
 
       casper.waitForSelector('.access', function(){
-          this.echo();
+          this.echo('Retrieving application credentials...');
 
           var access_token = this.evaluate(function(){
               return $('.access .row span:nth-child(2)').get(0).innerText;
@@ -133,93 +133,102 @@ TwitterAppControl.prototype.createApp = function create(){
               return $('.app-settings .row span:nth-child(2)').get(1).innerText;
           });
           this.echo(consumer_key_secret);
+      }, function(){
+        this.echo('Failed to fully prepare new application.');
+        this.capture('test.png').exit();
       });
-  }, this.getAppUrl(), this.getMainUrl);
+  });
 
   return this;
 };
 
-twitterAppControl.prototype.deleteApps() = function deleteApps(){
-  casper.thenOpen(this.getAppUrl(), function(app_url){
-      this.echo('Checking apps...');
+TwitterAppControl.prototype.deleteApps = function deleteApps(){
+  casper.thenOpen(domainApp, function(){
+      this.echo('Checking for existing applications...');
 
-      apps = this.evaluate(function(){
+      var apps = this.evaluate(function(){
          return $('.twitter-app .app-details a').map(function(){ return this.getAttribute('href'); }).get();
       });
+      var appDeletionUrls = [];
 
-      this.echo(JSON.stringify(apps));
+      if(apps.length > 0){
+        this.echo('Found some apps: ' + JSON.stringify(apps) + '!');
 
-      for(var i = 0; i < apps.length; i++){
+        for(var i = 0; i < apps.length; i++){
+          appDeletionUrls.push(domainApp + apps[i].replace('/show', '/delete'));
+        }
 
-        casper.thenOpen(app_url + apps[i].replace('/show', '/delete'), function(){
-
-          this.echo('Deleting app... ');
-
-          casper.waitForSelector('#edit-submit-delete', function(){
-              this.click('#edit-submit-delete');
-              this.echo('Clicked delete button');
-          }, function(){
-              this.render('test.png');
-              this.echo('Failed to load app delete page');
-          });
-
-          casper.then(function(){
-            casper.waitFor(function(){
-                return this.getCurrentUrl() == app_url;
-            }, function(){
-                this.echo('Deleted successfully!\n');
-            }, function(){
-                this.render('test.png');
-                this.echo('Failed to delete app\n');
-            });
-          });
-
-        });
+        this.echo('Deleting applications...');
+      }
+      else{
+        this.echo('No applications found!');
+        return this;
       }
 
-  }, this.getAppUrl());
-
-  return this;
-};
-
-twitterAppControl.prototype.updateSettings = function updateSettings(settings){
-  casper.thenOpen(this.getMainUrl() + 'settings/account', function (password) {
-      this.echo('Inside settings...');
-
-      casper.waitForSelector('#user_country', function(){
-          this.evaluate(function(password){
-              $('#auth_password').val(password);
-          }, password);
-
-          this.fillSelectors('#account-form', {
-              '#user_country': 'us',
-              '#user_lang': 'en',
-              '#user_time_zone': 'Pacific Time (US & Canada)',
-              '#user_nsfw_view': true,
-              '#user_nsfw_user': false,
-              // '#show_tweet_translations': false
-          }, true);
-
-          // this.click('#show_tweet_translations');
-      }, function(){
-          this.capture('test.png');
-          this.echo('Sth went wrong').exit();
-      });
-
-      casper.waitFor(function(){
-          return this.evaluate(function(){
-              return $('#settings-alert-box h4:contains("Thanks")').length > 0;
+      casper.each(appDeletionUrls, function(self, deleteUrl){
+        self.thenOpen(deleteUrl, function(){
+          self.waitForSelector('#edit-submit-delete', function(){
+              this.click('#edit-submit-delete');
+          }, function(){
+              this.echo('Failed to load application deletion page.');
+              this.render('test.png');
           });
-      }, function(){
-          this.echo('Saved').exit();
-      }, function(){
-          this.capture('test.png');
-          this.echo('Failed to save').exit();
+
+          self.waitFor(function(){
+              return this.getCurrentUrl() == domainApp;
+          }, function(){
+              this.echo('Application deleted successfully!');
+          }, function(){
+              this.echo('Failed to delete application.');
+              this.render('test.png');
+          });
+        });
       });
-  }, this.credentials.password);
+  });
 
   return this;
 };
+//
+// twitterAppControl.prototype.updateSettings = function updateSettings(settings){
+//   var credentials = this.getCredentials();
+//
+//   casper.thenOpen(this.getMainUrl() + 'settings/account', function (password) {
+//       this.echo('Inside settings!');
+//
+//       casper.waitForSelector('#user_country', function(){
+//           this.evaluate(function(password){
+//               $('#auth_password').val(password);
+//           }, password);
+//
+//           this.fillSelectors('#account-form', {
+//               '#user_country': 'us',
+//               '#user_lang': 'en',
+//               '#user_time_zone': 'Pacific Time (US & Canada)',
+//               '#user_nsfw_view': true,
+//               '#user_nsfw_user': false,
+//               // '#show_tweet_translations': false
+//           }, true);
+//
+//           // this.click('#show_tweet_translations');
+//       }, function(){
+//           this.capture('test.png');
+//           this.echo('Failed to load settings page.');
+//       });
+//
+//       casper.waitFor(function(){
+//           return this.evaluate(function(){
+//               return $('#settings-alert-box h4:contains("Thanks")').length > 0;
+//           });
+//       }, function(){
+//           this.echo('Saved');
+//       }, function(){
+//           this.capture('test.png');
+//           this.echo('Failed to update settings.');
+//       });
+//   });
+//
+//   return this;
+// };
 
 TwitterAppControl.prototype.saveNewAppCredentials = function saveNewAppCredentials(){
   // fix me: implement
