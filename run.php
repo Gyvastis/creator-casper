@@ -35,4 +35,4 @@ foreach($accs as $acc){
 	}
 }
 
-file_put_contents('run_app.sh', $command);
+file_put_contents('run.sh', $command);
