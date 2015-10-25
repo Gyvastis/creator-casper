@@ -1,14 +1,14 @@
 var require = patchRequire(require);
-var casper = null;
 
 exports.create = function(casperOptions){
-  casper = require('casper').create(casperOptions).start();
-  return new TwitterAppControl();
+  return new TwitterAppControl(casperOptions);
 };
 
-var TwitterAppControl = function TwitterAppControl(){
+var TwitterAppControl = function TwitterAppControl(CasperOptions){
   this.domainMain = "https://www.twitter.com/";
   this.domainApp = "https://apps.twitter.com/";
+
+  this.casper = require('casper').create(casperOptions).start();
 
   this.credentials = null;
 };
@@ -23,55 +23,56 @@ TwitterAppControl.prototype.login = function login() {
 
   //fix me: check if credentials are set
 
-  casper.thenOpen(domain + 'login', function () {
+  casper.thenOpen(this.getMainUrl() + 'login', function (credentials) {
       this.fill('form.signin', {
-          'session[username_or_email]': username,
-          'session[password]': password
+          'session[username_or_email]': credentials.username,
+          'session[password]': credentials.password
       }, true);
-  });
+  }, credentials);
 
-  casper.then(function(){
+  casper.then(function(credentials){
     if(this.getCurrentUrl().indexOf("login_challenge") > 0){
-      var challenge_text = '';
+      var challenge_text = 'Entering {0} challenge...';
+      var challenge_response = null;
 
       if(this.getCurrentUrl().indexOf("challenge_type=RetypeEmail") > 0){
-          this.echo('Entering EMAIL challenge...');
-          challenge_text = email;
+          this.echo(challenge_text.format('EMAIL'));
+          challenge_response = credentials.email;
       }
       else{
-          this.echo('Entering PHONE challenge...');
-          challenge_text = phone;
+          this.echo(challenge_text.format('PHONE'));
+          challenge_response = credentials.phone;
       }
 
       casper.waitForSelector('#login-challenge-form', function(){
         this.fill('#login-challenge-form', {
-            'challenge_response': challenge_text
+            'challenge_response': challenge_response
         }, true);
       });
     }
 
     this.echo('Logged in ('+username+')...');
-  });
+  }, credentials);
 
   return this;
 };
 
-TwitterAppControl.prototype.createApp = function create(deleteExistingApps, ){
-  casper.then(function(){
-      var account_name = this.evaluate(function(){
+TwitterAppControl.prototype.createApp = function create(){
+  casper.then(function(app_url, main_url){
+      var  = this.evaluate(function(){
           return $('.content .account-group').attr('data-screen-name');
       });
 
-      var app_name = account_name + Math.floor((Math.random() * 100) + 1).toString() + ' test';
+      var app_name =  + Math.floor((Math.random() * 100) + 1).toString() + ' test';
 
-      casper.thenOpen(twitter.getAppUrl() + '/app/new', function(){
+      casper.thenOpen(app_url + '/app/new', function(){
           casper.waitForSelector('#edit-tos-agreement', function(){
               this.click('#edit-tos-agreement');
 
               this.fill('form#twitter-apps-create-form', {
                   name: app_name,
                   description: 'Test application',
-                  url: twitter.getMainUrl()
+                  url: main_url
               }, true);
 
               this.click('#edit-submit');
@@ -83,15 +84,14 @@ TwitterAppControl.prototype.createApp = function create(deleteExistingApps, ){
       casper.waitFor(function(){
           return this.getTitle().indexOf(app_name) >= 0
       }, function(){
-
           this.echo('App created!');
 
-          casper.thenOpen(twitter.getAppUrl(), function(){
+          casper.thenOpen(app_url, function(){
               var current_app_url = this.evaluate(function(){
                   return $('.app-details a').attr('href').replace('/show', '/keys');
               });
 
-              casper.thenOpen(twitter.getAppUrl() + current_app_url, function(){
+              casper.thenOpen(app_url + current_app_url, function(){
                 casper.waitForSelector('#edit-submit-owner-token', function(){
                     this.click('#edit-submit-owner-token');
                 }, function(){
@@ -109,7 +109,7 @@ TwitterAppControl.prototype.createApp = function create(deleteExistingApps, ){
       });
 
       casper.waitForSelector('.access', function(){
-          this.echo(account_name);
+          this.echo();
 
           var access_token = this.evaluate(function(){
               return $('.access .row span:nth-child(2)').get(0).innerText;
@@ -131,13 +131,13 @@ TwitterAppControl.prototype.createApp = function create(deleteExistingApps, ){
           });
           this.echo(consumer_key_secret);
       });
-  });
+  }, this.getAppUrl(), this.getMainUrl);
 
   return this;
 };
 
-twitterAppControl.prototype.deleteApps() = funtion deleteApps(){
-  casper.thenOpen(domain2, function(){
+twitterAppControl.prototype.deleteApps() = function deleteApps(){
+  casper.thenOpen(this.getAppUrl(), function(app_url){
       this.echo('Checking apps...');
 
       apps = this.evaluate(function(){
@@ -148,7 +148,7 @@ twitterAppControl.prototype.deleteApps() = funtion deleteApps(){
 
       for(var i = 0; i < apps.length; i++){
 
-        casper.thenOpen(domain2 + apps[i].replace('/show', '/delete'), function(){
+        casper.thenOpen(app_url + apps[i].replace('/show', '/delete'), function(){
 
           this.echo('Deleting app... ');
 
@@ -162,7 +162,7 @@ twitterAppControl.prototype.deleteApps() = funtion deleteApps(){
 
           casper.then(function(){
             casper.waitFor(function(){
-                return this.getCurrentUrl() == domain2;
+                return this.getCurrentUrl() == app_url;
             }, function(){
                 this.echo('Deleted successfully!\n');
             }, function(){
@@ -174,13 +174,13 @@ twitterAppControl.prototype.deleteApps() = funtion deleteApps(){
         });
       }
 
-  });
+  }, this.getAppUrl());
 
   return this;
 };
 
-twitterAppControl.prototype.setSettings = function setSettings(){
-  casper.thenOpen(domain + 'settings/account', function () {
+twitterAppControl.prototype.updateSettings = function updateSettings(settings){
+  casper.thenOpen(this.getMainUrl() + 'settings/account', function (password) {
       this.echo('Inside settings...');
 
       casper.waitForSelector('#user_country', function(){
@@ -213,13 +213,18 @@ twitterAppControl.prototype.setSettings = function setSettings(){
           this.capture('test.png');
           this.echo('Failed to save').exit();
       });
-  });
+  }, this.credentials.password);
 
   return this;
 };
 
-TwitterAppControl.prototype.execute = funtion execute(){
-  casper.run();
+TwitterAppControl.prototype.saveNewAppCredentials = function saveNewAppCredentials(){
+  // fix me: implement
+  return this;
+};
+
+TwitterAppControl.prototype.execute = function execute(){
+  this.casper.run();
   return this;
 };
 
@@ -230,7 +235,6 @@ TwitterAppControl.prototype.getMainUrl = function getMainUrl(){
 TwitterAppControl.prototype.getAppUrl = function getAppUrl(){
   return this.domainApp;
 };
-
 
 TwitterAppControl.prototype.getCredentials = function getCredentials(){
   return this.credentials;
