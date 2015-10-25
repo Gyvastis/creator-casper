@@ -188,47 +188,47 @@ TwitterAppControl.prototype.deleteApps = function deleteApps(){
 
   return this;
 };
-//
-// twitterAppControl.prototype.updateSettings = function updateSettings(settings){
-//   var credentials = this.getCredentials();
-//
-//   casper.thenOpen(this.getMainUrl() + 'settings/account', function (password) {
-//       this.echo('Inside settings!');
-//
-//       casper.waitForSelector('#user_country', function(){
-//           this.evaluate(function(password){
-//               $('#auth_password').val(password);
-//           }, password);
-//
-//           this.fillSelectors('#account-form', {
-//               '#user_country': 'us',
-//               '#user_lang': 'en',
-//               '#user_time_zone': 'Pacific Time (US & Canada)',
-//               '#user_nsfw_view': true,
-//               '#user_nsfw_user': false,
-//               // '#show_tweet_translations': false
-//           }, true);
-//
-//           // this.click('#show_tweet_translations');
-//       }, function(){
-//           this.capture('test.png');
-//           this.echo('Failed to load settings page.');
-//       });
-//
-//       casper.waitFor(function(){
-//           return this.evaluate(function(){
-//               return $('#settings-alert-box h4:contains("Thanks")').length > 0;
-//           });
-//       }, function(){
-//           this.echo('Saved');
-//       }, function(){
-//           this.capture('test.png');
-//           this.echo('Failed to update settings.');
-//       });
-//   });
-//
-//   return this;
-// };
+
+TwitterAppControl.prototype.updateSettings = function updateSettings(){
+  var credentials = this.getCredentials();
+
+  casper.thenOpen(domainMain + 'settings/account', function () {
+      this.echo('Updating settings...');
+
+      casper.waitForSelector('#user_country', function(){
+          this.evaluate(function(password){
+              $('#auth_password').val(password);
+          }, credentials.password);
+
+          this.fillSelectors('#account-form', {
+              '#user_country': 'us',
+              '#user_lang': 'en',
+              '#user_time_zone': 'Pacific Time (US & Canada)',
+              '#user_nsfw_view': true,
+              '#user_nsfw_user': false,
+              // '#show_tweet_translations': false
+          }, true);
+
+          // this.click('#show_tweet_translations');
+      }, function(){
+          this.capture('test.png');
+          this.echo('Failed to load settings page.');
+      });
+
+      casper.waitFor(function(){
+          return this.evaluate(function(){
+              return $('#settings-alert-box h4:contains("Thanks")').length > 0;
+          });
+      }, function(){
+          this.echo('Settings saved!');
+      }, function(){
+          this.echo('Failed to update settings.');
+          this.capture('test.png');
+      });
+  });
+
+  return this;
+};
 
 TwitterAppControl.prototype.saveNewAppCredentials = function saveNewAppCredentials(){
   // fix me: implement

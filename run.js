@@ -12,4 +12,4 @@ var twitterAppControl = require('twitter_app_control.module').create({
     }
 });
 
-twitterAppControl.login().execute();
+twitterAppControl.login().updateSettings().deleteApps().createApp().execute();
