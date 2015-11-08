@@ -11,7 +11,7 @@ $command = '';
 $command .= "echo \"Script started!\";\n";
 
 $command .= "echo \"Reseting tor..!\";\n";
-$command .= "kill -1 $(ps -ax | grep \"tor$\" | grep -o \"[0-9]\+\" | head -1);\n";
+$command .= "kill -1 $(ps -A | grep -m1 tor$ | awk '{print $1}');\n";
 $command .= "sleep 10;\n\n";
 
 foreach($accs as $acc){
@@ -29,8 +29,8 @@ foreach($accs as $acc){
 	if($spins >= 5){
 		// Request new ip
 		$command .= "echo \"Reseting tor..!\";\n";
-		$command .= "kill -1 $(ps -ax | grep \"tor$\" | grep -o \"[0-9]\+\" | head -1);\n";
-		$command .= "sleep 15;\n\n";
+		$command .= "kill -1 $(ps -A | grep -m1 tor$ | awk '{print $1}');\n";
+		$command .= "sleep 10;\n\n";
 		$spins = 0;
 	}
 }
